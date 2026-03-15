@@ -1,25 +1,3 @@
-"""
-chatbot.py
-==========
-Steps:
-  d) Conversation Chain   → ConversationBufferMemory + ChatOpenAI + Chroma Cloud
-  e) Driver               → Confirm-before-query loop (max 3 retries, type 'exit' to quit)
-
-Requires preprocess.py to have been run first so that the Chroma Cloud
-collection already contains the embedded PDF chunks.
-
-Environment variables required
--------------------------------
-  OPENAI_API_KEY    your OpenAI API key
-  CHROMA_API_KEY    your Chroma Cloud API key
-  CHROMA_TENANT     your Chroma Cloud tenant name
-  CHROMA_DATABASE   your Chroma Cloud database name
-
-Usage
------
-  python chatbot.py
-"""
-
 import os
 from dotenv import load_dotenv
 
@@ -31,20 +9,13 @@ from langchain_classic.chains import ConversationalRetrievalChain
 import chromadb
 
 load_dotenv()
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
+
 COLLECTION_NAME = "Ads_cookbook"
 OPENAI_MODEL    = "gpt-4o-mini"
 MAX_RETRIES     = 3
 
 
-# ===========================================================================
-# d) CONVERSATION CHAIN
-# ===========================================================================
-
 def get_chroma_cloud_client() -> chromadb.CloudClient:
-    """Build a Chroma Cloud client from environment variables."""
 
     client = chromadb.CloudClient(
     api_key='ck-5dgKymXwyiqkzbwh67P8EcvqBoWEeVxa4GYjticy7ofC',
@@ -54,7 +25,6 @@ def get_chroma_cloud_client() -> chromadb.CloudClient:
     return client
 
 def load_vector_store() -> Chroma:
-    """Connect to the existing Chroma Cloud collection."""
     embeddings    = OpenAIEmbeddings(model="text-embedding-ada-002")
     chroma_client = get_chroma_cloud_client()
 
@@ -63,17 +33,12 @@ def load_vector_store() -> Chroma:
         collection_name=COLLECTION_NAME,
         embedding_function=embeddings,
     )
-    print(f"  ✔ Connected to Chroma Cloud collection '{COLLECTION_NAME}'.")
+    print(f" Connected to Chroma Cloud collection '{COLLECTION_NAME}'.")
     return vector_store
 
 
 def create_conversation_chain(llm: ChatOpenAI, vector_store: Chroma) -> ConversationalRetrievalChain:
-    """
-    Build a ConversationalRetrievalChain backed by Chroma Cloud.
 
-    ConversationBufferMemory keeps the full chat history so the model can
-    answer follow-up questions that reference previous turns.
-    """
     memory = ConversationBufferMemory(
         memory_key="chat_history",
         return_messages=True,
@@ -86,7 +51,7 @@ def create_conversation_chain(llm: ChatOpenAI, vector_store: Chroma) -> Conversa
         return_source_documents=False,
         verbose=False,
     )
-    print("  ✔ Conversation chain ready.")
+    print("Conversation chain ready.")
     return chain
 
 
@@ -172,14 +137,31 @@ def main() -> None:
         if not os.getenv(var):
             raise EnvironmentError(f"Environment variable '{var}' is not set.")
 
-    print("\n=== Step d) Loading vector store & building conversation chain ===")
+    print("\nLoading vector store & building conversation chain...")
     llm          = ChatOpenAI(model=OPENAI_MODEL, temperature=0)
     vector_store = load_vector_store()
     chain        = create_conversation_chain(llm, vector_store)
 
-    print("\n=== Step e) Starting chatbot ===")
+    print("\nStarting chatbot...")
     run_chatbot(chain, llm)
 
 
 if __name__ == "__main__":
     main()
+
+
+"""
+Conversation Chain:   ConversationBufferMemory + ChatOpenAI + Chroma Cloud
+Driver            :   Confirm-before-query loop (max 3 retries, type 'exit' to quit)
+
+Environment variables required
+-------------------------------
+  OPENAI_API_KEY    your OpenAI API key
+  CHROMA_API_KEY    your Chroma Cloud API key
+  CHROMA_TENANT     your Chroma Cloud tenant name
+  CHROMA_DATABASE   your Chroma Cloud database name
+
+Usage
+-----
+  python chatbot.py
+"""

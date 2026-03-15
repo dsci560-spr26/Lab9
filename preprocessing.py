@@ -1,24 +1,3 @@
-"""
-preprocess.py
-=============
-Steps:
-  a) PDF Text Extraction  → in-memory list (no relational DB)
-  b) Text Chunking        → LangChain CharacterTextSplitter (chunk_size=500)
-  c) Vector Datastore     → OpenAI Embeddings + Chroma Cloud
-
-Environment variables required
--------------------------------
-  OPENAI_API_KEY    your OpenAI API key
-  CHROMA_API_KEY    your Chroma Cloud API key
-  CHROMA_TENANT     your Chroma Cloud tenant name
-  CHROMA_DATABASE   your Chroma Cloud database name
-
-Usage
------
-  python preprocess.py
-  python preprocess.py --pdf-folder ./my_pdfs
-"""
-
 import os
 import glob
 import argparse
@@ -33,27 +12,16 @@ from langchain_community.vectorstores import Chroma
 import chromadb
 
 load_dotenv()
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
+
 DEFAULT_PDF_FOLDER  = "./DSCI560_Lab9"
 COLLECTION_NAME     = "Ads_cookbook"
 CHUNK_SIZE          = 500
 CHUNK_OVERLAP       = 50
 
-
-# ===========================================================================
-# a) PDF TEXT EXTRACTION
-# ===========================================================================
-
 def extract_pdfs(pdf_folder: str) -> list[dict]:
-    """
-    Iterate every PDF in pdf_folder, extract text page-by-page,
-    and return a list of dicts: {filename, page_num, content}.
-    """
     pdf_files = glob.glob(os.path.join(pdf_folder, "*.pdf"))
     if not pdf_files:
-        print(f"[WARNING] No PDF files found in '{pdf_folder}'.")
+        print(f"No PDF files found in '{pdf_folder}'.")
         return []
 
     pages = []
@@ -70,13 +38,8 @@ def extract_pdfs(pdf_folder: str) -> list[dict]:
                     "content":  text,
                 })
 
-    print(f"  ✔ Extracted {len(pages)} pages from {len(pdf_files)} PDF(s).")
+    print(f" Extracted {len(pages)} pages from {len(pdf_files)} PDF(s).")
     return pages
-
-
-# ===========================================================================
-# b) GET TEXT CHUNKS
-# ===========================================================================
 
 def get_text_chunks(pages: list[dict]) -> list[str]:
     """
@@ -98,16 +61,10 @@ def get_text_chunks(pages: list[dict]) -> list[str]:
         length_function=len,
     )
     chunks = splitter.split_text(full_text)
-    print(f"  ✔ Created {len(chunks)} chunks (size≤{CHUNK_SIZE}, overlap={CHUNK_OVERLAP}).")
+    print(f"Created {len(chunks)} chunks (size≤{CHUNK_SIZE}, overlap={CHUNK_OVERLAP}).")
     return chunks
 
-
-# ===========================================================================
-# c) CREATE VECTOR DATASTORE  (Chroma Cloud)
-# ===========================================================================
-
 def get_chroma_cloud_client() -> chromadb.CloudClient:
-    """Build a Chroma Cloud client from environment variables."""
 
     client = chromadb.CloudClient(
     api_key='ck-5dgKymXwyiqkzbwh67P8EcvqBoWEeVxa4GYjticy7ofC',
@@ -117,10 +74,6 @@ def get_chroma_cloud_client() -> chromadb.CloudClient:
     return client
 
 def create_vector_store(chunks: list[str]) -> None:
-    """
-    Embed each chunk with OpenAI text-embedding-ada-002 and upload to
-    Chroma Cloud.
-    """
     embeddings    = OpenAIEmbeddings(model="text-embedding-ada-002")
     chroma_client = get_chroma_cloud_client()
 
@@ -131,16 +84,11 @@ def create_vector_store(chunks: list[str]) -> None:
             client=chroma_client,
             collection_name=COLLECTION_NAME,
         )
-        print(f"  ✔ {len(chunks)} chunks uploaded to Chroma Cloud "
-            f"(collection: '{COLLECTION_NAME}').")
+    print(f" {len(chunks)} chunks uploaded to Chroma Cloud "
+        f"(collection: '{COLLECTION_NAME}').")
 
-
-# ===========================================================================
-# Main
-# ===========================================================================
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Preprocess PDFs → Chroma Cloud")
+def main():
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         "--pdf-folder",
         default=DEFAULT_PDF_FOLDER,
@@ -152,19 +100,25 @@ def main() -> None:
         if not os.getenv(var):
             raise EnvironmentError(f"Environment variable '{var}' is not set.")
 
-    print("\n=== Step a) Extracting PDFs ===")
+    print("\nExtracting PDFs...")
     pages = extract_pdfs(args.pdf_folder)
     if not pages:
         return
 
-    print("\n=== Step b) Chunking text ===")
+    print("\nChunking text...")
     chunks = get_text_chunks(pages)
 
-    print("\n=== Step c) Uploading to Chroma Cloud ===")
+    print("\nUploading to Chroma Cloud...")
     create_vector_store(chunks)
 
-    print("\n✅ Preprocessing complete. You can now run drive_function.py.\n")
-
+    print("\nPreprocessing complete. You can now run drive_function.py.\n")
 
 if __name__ == "__main__":
     main()
+
+"""
+Usage
+-----
+  python preprocess.py
+  python preprocess.py --pdf-folder ./my_pdfs
+"""
