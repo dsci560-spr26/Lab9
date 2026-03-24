@@ -16,11 +16,19 @@ MAX_RETRIES     = 3
 
 
 def get_chroma_cloud_client() -> chromadb.CloudClient:
+    api_key = os.getenv("CHROMA_API_KEY")
+    tenant = os.getenv("CHROMA_TENANT")
+    database = os.getenv("CHROMA_DATABASE")
+
+    if not api_key or not tenant or not database:
+        raise EnvironmentError(
+            "CHROMA_API_KEY, CHROMA_TENANT, and CHROMA_DATABASE must be set."
+        )
 
     client = chromadb.CloudClient(
-    api_key='ck-5dgKymXwyiqkzbwh67P8EcvqBoWEeVxa4GYjticy7ofC',
-    tenant='b2a6f32d-669f-4c1a-8525-c857a7d1e59e',
-    database='DSCI560_Lab9'
+        api_key=api_key,
+        tenant=tenant,
+        database=database,
     )
     return client
 
